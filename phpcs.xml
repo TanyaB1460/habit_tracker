@@ -2,5 +2,5 @@
 <ruleset name="Custom Ruleset">
     <description>PSR-12 rules</description>
     <rule ref="PSR12"/>
-    <file>src</file> <!-- Укажи папку, где лежит твой PHP код -->
+    <file>src</file>
 </ruleset>

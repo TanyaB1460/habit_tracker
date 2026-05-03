@@ -59,10 +59,8 @@ $router->register([
     StatsController::class,
 ]);
 
-// Инициализируем Middleware и передаем в него логгер
 $loggerMiddleware = new LoggerMiddleware($logger);
 
-// Оборачиваем вызов dispatch в middleware
 $loggerMiddleware(
     $_SERVER['REQUEST_METHOD'] ?? 'GET',
     $_SERVER['REQUEST_URI'] ?? '/',
