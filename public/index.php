@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/vendor/autoload.php';
@@ -7,6 +8,7 @@ use App\Controllers\HabitController;
 use App\Controllers\HomeController;
 use App\Controllers\StatsController;
 use App\Core\Router;
+use App\Core\Middleware\LoggerMiddleware;
 use Dotenv\Dotenv;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level;
@@ -57,7 +59,14 @@ $router->register([
     StatsController::class,
 ]);
 
-$router->dispatch(
+// Инициализируем Middleware и передаем в него логгер
+$loggerMiddleware = new LoggerMiddleware($logger);
+
+// Оборачиваем вызов dispatch в middleware
+$loggerMiddleware(
     $_SERVER['REQUEST_METHOD'] ?? 'GET',
-    $_SERVER['REQUEST_URI'] ?? '/'
+    $_SERVER['REQUEST_URI'] ?? '/',
+    function (string $method, string $uri) use ($router) {
+        $router->dispatch($method, $uri);
+    }
 );
