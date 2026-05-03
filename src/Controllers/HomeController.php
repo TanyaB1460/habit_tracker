@@ -1,22 +1,33 @@
 <?php
+declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Core\Controller;
+use App\Core\Attributes\Route;
+use App\Models\Habit;
 
-class HomeController extends Controller
+final class HomeController
 {
-    // Главная страница — список привычек на сегодня
+    #[Route(path: '/', methods: ['GET'])]
     public function index(): void
     {
-        $this->render('home');
+        $today = date('Y-m-d');
+        $habits = Habit::getAllWithStatusForDate($today);
+
+        require dirname(__DIR__, 2) . '/views/home.php';
     }
 
-    // Отметить привычку выполненной за сегодня
+    #[Route(path: '/toggle', methods: ['POST'])]
     public function toggle(): void
     {
-        $id = (int) $this->router->getPost('id');
-        // TODO: отметить выполнение
-        $this->redirect('/');
+        $habitId = isset($_POST['habit_id']) ? (int) $_POST['habit_id'] : 0;
+        $date = $_POST['date'] ?? date('Y-m-d');
+
+        if ($habitId > 0) {
+            Habit::toggleForDate($habitId, $date);
+        }
+
+        header('Location: /', true, 303);
+        exit;
     }
 }

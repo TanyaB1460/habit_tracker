@@ -1,14 +1,19 @@
 <?php
+declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Core\Controller;
+use App\Core\Attributes\Route;
+use App\Models\Habit;
 
-class StatsController extends Controller
+final class StatsController
 {
-    // Страница статистики — процент выполнения за месяц
+    #[Route(path: '/stats', methods: ['GET'])]
     public function index(): void
     {
-        $this->render('stats/index');
+        $stats = Habit::getStatsSummary();
+        $dailyStats = Habit::getDailyCompletionStats(14);
+
+        require dirname(__DIR__, 2) . '/views/stats/index.php';
     }
 }
