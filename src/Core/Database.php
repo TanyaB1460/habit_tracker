@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App;
+namespace App\Core;
 
 use PDO;
 use PDOException;
@@ -21,7 +21,7 @@ final class Database
         $port = $_ENV['DB_PORT'] ?? '5432';
         $dbname = $_ENV['DB_NAME'] ?? 'habit_tracker';
         $user = $_ENV['DB_USER'] ?? 'postgres';
-        $password = $_ENV['2685'] ?? '';
+        $password = $_ENV['2685'] ?? '2685';
 
         $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', $host, $port, $dbname);
 

@@ -6,6 +6,7 @@ namespace App\Models;
 
 use PDO;
 use Throwable;
+use App\Core\Database;
 
 final class Habit
 {

@@ -16,7 +16,7 @@ abstract class Controller
     protected function render(string $view, array $data = []): void
     {
         extract($data, EXTR_SKIP);
-        require dirname(__DIR__) . '/views/' . $view . '.php';
+        require dirname(__DIR__, 2) . '/views/' . $view . '.php';
     }
 
     protected function redirect(string $path): void

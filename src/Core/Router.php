@@ -2,8 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App;
+namespace App\Core;
 
+use App\Core\Attributes\Route;
 use ReflectionClass;
 use ReflectionMethod;
 
@@ -20,6 +21,7 @@ final class Router
                 $attributes = $method->getAttributes(Route::class);
 
                 foreach ($attributes as $attribute) {
+                    /** @var Route $routeMeta */
                     $routeMeta = $attribute->newInstance();
                     $path = $this->normalizePath($routeMeta->path);
 
@@ -43,7 +45,7 @@ final class Router
 
         if (!isset($this->routes[$method][$path])) {
             http_response_code(404);
-            require dirname(__DIR__) . '/views/errors/404.php';
+            require dirname(__DIR__, 2) . '/views/errors/404.php';
             return;
         }
 
@@ -73,46 +75,5 @@ final class Router
         }
 
         return $this->normalizePath($path);
-    }
-
-    public function getPost(string $key, mixed $default = null): mixed
-    {
-        return $_POST[$key] ?? $default;
-    }
-
-    public function getGet(string $key, mixed $default = null): mixed
-    {
-        return $_GET[$key] ?? $default;
-    }
-
-    public function getPostInt(string $key): ?int
-    {
-        $value = $_POST[$key] ?? null;
-
-        if ($value === null) {
-            return null;
-        }
-
-        $validated = filter_var($value, FILTER_VALIDATE_INT);
-
-        return $validated === false ? null : $validated;
-    }
-
-    public function getGetInt(string $key): ?int
-    {
-        $value = $_GET[$key] ?? null;
-
-        if ($value === null) {
-            return null;
-        }
-
-        $validated = filter_var($value, FILTER_VALIDATE_INT);
-
-        return $validated === false ? null : $validated;
-    }
-
-    public function getMethod(): string
-    {
-        return strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
     }
 }

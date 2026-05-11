@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
+use App\Core\Controller;
+use App\Models\Habit;
+use App\Core\Attributes\Route;
+
 final class StatsController extends Controller
 {
     #[Route(path: '/stats', methods: ['GET'])]
