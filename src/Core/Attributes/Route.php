@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Core\Attributes;
+namespace App;
 
 use Attribute;
 

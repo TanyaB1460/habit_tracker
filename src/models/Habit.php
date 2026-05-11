@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Core\Database;
 use PDO;
 use Throwable;
 
 final class Habit
 {
+    #[\NoDiscard('Список привычек должен быть использован')]
     public static function getAll(): array
     {
         try {
@@ -29,6 +29,7 @@ final class Habit
         }
     }
 
+    #[\NoDiscard('Не забудьте использовать результат!')]
     public static function findById(int $id): ?array
     {
         try {
@@ -111,7 +112,6 @@ final class Habit
         }
     }
 
-    //переключение статуса выполнения привычки
     public static function toggleForDate(int $habitId, string $date): void
     {
         try {
@@ -139,23 +139,26 @@ final class Habit
                     'habit_id' => $habitId,
                     'completed_on' => $date,
                 ]);
-            } else {
-                $insertStmt = $pdo->prepare(
-                    'INSERT INTO habit_logs (habit_id, completed_on)
-                     VALUES (:habit_id, :completed_on)'
-                );
-                $insertStmt->execute([
-                    'habit_id' => $habitId,
-                    'completed_on' => $date,
-                ]);
+
+                return;
             }
+
+            $insertStmt = $pdo->prepare(
+                'INSERT INTO habit_logs (habit_id, completed_on)
+                 VALUES (:habit_id, :completed_on)'
+            );
+            $insertStmt->execute([
+                'habit_id' => $habitId,
+                'completed_on' => $date,
+            ]);
         } catch (Throwable $e) {
             error_log($e->getMessage());
             throw $e;
         }
     }
 
-    //активные привычки
+
+    #[\NoDiscard('Данные для главной страницы должны быть использованы')]
     public static function getAllWithStatusForDate(string $date): array
     {
         try {
@@ -163,21 +166,21 @@ final class Habit
 
             $stmt = $pdo->prepare(
                 'SELECT h.id,
-                    h.name,
-                    h.description,
-                    h.frequency,
-                    h.is_active,
-                    h.created_at,
-                    h.updated_at,
-                    EXISTS (
-                        SELECT 1
-                        FROM habit_logs hl
-                        WHERE hl.habit_id = h.id
-                          AND hl.completed_on = :date
-                    ) AS completed_today
-             FROM habits h
-             WHERE h.is_active = TRUE
-             ORDER BY h.id DESC'
+                        h.name,
+                        h.description,
+                        h.frequency,
+                        h.is_active,
+                        h.created_at,
+                        h.updated_at,
+                        EXISTS (
+                            SELECT 1
+                            FROM habit_logs hl
+                            WHERE hl.habit_id = h.id
+                              AND hl.completed_on = :date
+                        ) AS completed_today
+                 FROM habits h
+                 WHERE h.is_active = TRUE
+                 ORDER BY h.id DESC'
             );
 
             $stmt->execute(['date' => $date]);
@@ -189,6 +192,7 @@ final class Habit
         }
     }
 
+    #[\NoDiscard('Сводная статистика должна быть использована')]
     public static function getStatsSummary(): array
     {
         try {
@@ -202,8 +206,8 @@ final class Habit
 
             $todayStmt = $pdo->prepare(
                 'SELECT COUNT(*)
-             FROM habit_logs
-             WHERE completed_on = :today'
+                 FROM habit_logs
+                 WHERE completed_on = :today'
             );
             $todayStmt->execute(['today' => date('Y-m-d')]);
             $completedToday = (int) $todayStmt->fetchColumn();
@@ -219,6 +223,8 @@ final class Habit
         }
     }
 
+
+    #[\NoDiscard('Статистика по дням должна быть использована')]
     public static function getDailyCompletionStats(int $days = 14): array
     {
         try {
@@ -226,10 +232,10 @@ final class Habit
 
             $stmt = $pdo->prepare(
                 'SELECT completed_on, COUNT(*) AS total
-             FROM habit_logs
-             WHERE completed_on >= CURRENT_DATE - (:days * INTERVAL \'1 day\')
-             GROUP BY completed_on
-             ORDER BY completed_on DESC'
+                 FROM habit_logs
+                 WHERE completed_on >= CURRENT_DATE - (:days * INTERVAL \'1 day\')
+                 GROUP BY completed_on
+                 ORDER BY completed_on DESC'
             );
 
             $stmt->bindValue(':days', $days, PDO::PARAM_INT);

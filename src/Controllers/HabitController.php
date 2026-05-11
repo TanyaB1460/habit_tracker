@@ -4,46 +4,51 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Core\Attributes\Route;
-use App\Models\Habit;
-
-final class HabitController
+final class HabitController extends Controller
 {
     #[Route(path: '/habits', methods: ['GET'])]
     public function index(): void
     {
         $habits = Habit::getAll();
 
-        require dirname(__DIR__, 2) . '/views/habits/index.php';
+        $this->render('habits/index', [
+            'habits' => $habits,
+        ]);
     }
 
     #[Route(path: '/habits/create', methods: ['POST'])]
     public function create(): void
     {
-        $name        = trim($_POST['name'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $frequency   = trim($_POST['frequency'] ?? 'daily');
+        $name = ($_POST['name'] ?? '')
+                |> $this->ensureString(...)
+                |> trim(...);
 
-        if ($name !== '') {
-            Habit::create(
-                $name,
-                $description !== '' ? $description : null,
-                $frequency
-            );
+        $description = ($_POST['description'] ?? '')
+                |> $this->ensureString(...)
+                |> trim(...)
+                |> $this->emptyToNull(...);
+
+        $frequency = ($_POST['frequency'] ?? 'daily')
+                |> $this->ensureString(...)
+                |> trim(...);
+
+        if ($name === '') {
+            throw new ValidationException('Название привычки не может быть пустым.');
         }
 
-        header('Location: /habits', true, 303);
-        exit;
+        Habit::create($name, $description, $frequency);
+
+        $this->redirect('/habits');
     }
 
     #[Route(path: '/habits/edit', methods: ['GET'])]
     public function edit(): void
     {
-        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+        $id = $this->getInt('id');
 
-        if ($id <= 0) {
+        if ($id === null || $id <= 0) {
             http_response_code(404);
-            require dirname(__DIR__, 2) . '/views/errors/404.php';
+            require dirname(__DIR__) . '/views/errors/404.php';
             return;
         }
 
@@ -51,45 +56,75 @@ final class HabitController
 
         if ($habit === null) {
             http_response_code(404);
-            require dirname(__DIR__, 2) . '/views/errors/404.php';
+            require dirname(__DIR__) . '/views/errors/404.php';
             return;
         }
 
-        require dirname(__DIR__, 2) . '/views/habits/edit.php';
+        $this->render('habits/edit', [
+            'habit' => $habit,
+        ]);
     }
 
     #[Route(path: '/habits/update', methods: ['POST'])]
     public function update(): void
     {
-        $id          = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-        $name        = trim($_POST['name'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $frequency   = trim($_POST['frequency'] ?? 'daily');
+        $id = $this->postInt('id');
 
-        if ($id > 0 && $name !== '') {
-            Habit::update(
-                $id,
-                $name,
-                $description !== '' ? $description : null,
-                $frequency
-            );
+        $name = ($_POST['name'] ?? '')
+                |> $this->ensureString(...)
+                |> trim(...);
+
+        $description = ($_POST['description'] ?? '')
+                |> $this->ensureString(...)
+                |> trim(...)
+                |> $this->emptyToNull(...);
+
+        $frequency = ($_POST['frequency'] ?? 'daily')
+                |> $this->ensureString(...)
+                |> trim(...);
+
+        if ($id === null || $id <= 0) {
+            throw new ValidationException('Некорректный идентификатор привычки.');
         }
 
-        header('Location: /habits', true, 303);
-        exit;
-    }
+        if ($name === '') {
+            throw new ValidationException('Название привычки не может быть пустым.');
+        }
 
+        Habit::update($id, $name, $description, $frequency);
+
+        $this->redirect('/habits');
+    }
 
     #[Route(path: '/habits/delete', methods: ['POST'])]
     public function delete(): void
     {
-        $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+        $id = $this->postInt('id');
 
-        if ($id > 0) {
-            Habit::delete($id);
+        if ($id === null || $id <= 0) {
+            throw new ValidationException('Некорректный идентификатор привычки.');
         }
 
-        header('Location: /habits', true, 303);
-        exit;
+        Habit::delete($id);
+
+        $this->redirect('/habits');
+    }
+
+    #[Route(path: '/habits/toggle', methods: ['POST'])]
+    public function toggle(): void
+    {
+        $habitId = $this->postInt('habit_id');
+
+        $date = ($_POST['date'] ?? date('Y-m-d'))
+                |> $this->ensureString(...)
+                |> trim(...);
+
+        if ($habitId === null || $habitId <= 0) {
+            throw new ValidationException('Некорректный идентификатор привычки.');
+        }
+
+        Habit::toggleForDate($habitId, $date);
+
+        $this->redirect('/');
     }
 }

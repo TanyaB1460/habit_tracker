@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-require_once dirname(__DIR__) . '/vendor/autoload.php';
-
 use App\Controllers\HabitController;
 use App\Controllers\HomeController;
 use App\Controllers\StatsController;
@@ -13,6 +11,8 @@ use Dotenv\Dotenv;
 use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
+
+require dirname(__DIR__) . '/vendor/autoload.php';
 
 $dotenv = Dotenv::createImmutable(dirname(__DIR__));
 $dotenv->load();
@@ -31,7 +31,7 @@ if (!is_dir(dirname($logFile))) {
 $logger = new Logger('app');
 $logger->pushHandler(new StreamHandler($logFile, Level::Debug));
 
-set_exception_handler(function (\Throwable $e) use ($logger, $appDebug) {
+set_exception_handler(function (Throwable $e) use ($logger, $appDebug): void {
     $logger->error('Unhandled exception', [
         'exception' => $e,
     ]);
@@ -52,7 +52,6 @@ set_exception_handler(function (\Throwable $e) use ($logger, $appDebug) {
 });
 
 $router = new Router();
-
 $router->register([
     HomeController::class,
     HabitController::class,
@@ -64,7 +63,7 @@ $loggerMiddleware = new LoggerMiddleware($logger);
 $loggerMiddleware(
     $_SERVER['REQUEST_METHOD'] ?? 'GET',
     $_SERVER['REQUEST_URI'] ?? '/',
-    function (string $method, string $uri) use ($router) {
+    function (string $method, string $uri) use ($router): void {
         $router->dispatch($method, $uri);
     }
 );

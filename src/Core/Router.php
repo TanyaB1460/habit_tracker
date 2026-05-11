@@ -2,9 +2,8 @@
 
 declare(strict_types=1);
 
-namespace App\Core;
+namespace App;
 
-use App\Core\Attributes\Route;
 use ReflectionClass;
 use ReflectionMethod;
 
@@ -15,22 +14,21 @@ final class Router
     public function register(array $controllerClasses): void
     {
         foreach ($controllerClasses as $controllerClass) {
-            $refClass = new ReflectionClass($controllerClass);
+            $reflectionClass = new ReflectionClass($controllerClass);
 
-            foreach ($refClass->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
+            foreach ($reflectionClass->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
                 $attributes = $method->getAttributes(Route::class);
 
                 foreach ($attributes as $attribute) {
                     $routeMeta = $attribute->newInstance();
-
                     $path = $this->normalizePath($routeMeta->path);
 
                     foreach ($routeMeta->methods as $httpMethod) {
-                        $httpMethod = strtoupper($httpMethod);
+                        $methodName = strtoupper((string) $httpMethod);
 
-                        $this->routes[$httpMethod][$path] = [
+                        $this->routes[$methodName][$path] = [
                             'controller' => $controllerClass,
-                            'action'     => $method->getName(),
+                            'action' => $method->getName(),
                         ];
                     }
                 }
@@ -38,22 +36,20 @@ final class Router
         }
     }
 
-
     public function dispatch(string $httpMethod, string $uri): void
     {
-        $httpMethod = strtoupper($httpMethod);
-        $path       = $this->extractPath($uri);
+        $method = strtoupper($httpMethod);
+        $path = $this->extractPath($uri);
 
-        if (!isset($this->routes[$httpMethod][$path])) {
+        if (!isset($this->routes[$method][$path])) {
             http_response_code(404);
-            require dirname(__DIR__, 2) . '/views/errors/404.php';
+            require dirname(__DIR__) . '/views/errors/404.php';
             return;
         }
 
-        $route = $this->routes[$httpMethod][$path];
-
+        $route = $this->routes[$method][$path];
         $controllerClass = $route['controller'];
-        $action          = $route['action'];
+        $action = $route['action'];
 
         $controller = new $controllerClass();
         $controller->$action();
@@ -65,13 +61,17 @@ final class Router
             return '/';
         }
 
-        return '/' . ltrim($path, '/');
+        return '/' . ltrim(trim($path), '/');
     }
-
 
     private function extractPath(string $uri): string
     {
-        $path = parse_url($uri, PHP_URL_PATH) ?: '/';
+        $path = parse_url($uri, PHP_URL_PATH);
+
+        if (!is_string($path) || $path === '') {
+            return '/';
+        }
+
         return $this->normalizePath($path);
     }
 
@@ -83,6 +83,32 @@ final class Router
     public function getGet(string $key, mixed $default = null): mixed
     {
         return $_GET[$key] ?? $default;
+    }
+
+    public function getPostInt(string $key): ?int
+    {
+        $value = $_POST[$key] ?? null;
+
+        if ($value === null) {
+            return null;
+        }
+
+        $validated = filter_var($value, FILTER_VALIDATE_INT);
+
+        return $validated === false ? null : $validated;
+    }
+
+    public function getGetInt(string $key): ?int
+    {
+        $value = $_GET[$key] ?? null;
+
+        if ($value === null) {
+            return null;
+        }
+
+        $validated = filter_var($value, FILTER_VALIDATE_INT);
+
+        return $validated === false ? null : $validated;
     }
 
     public function getMethod(): string

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Core;
+namespace App;
 
 use PDO;
 use PDOException;
@@ -11,34 +11,37 @@ final class Database
 {
     private static ?PDO $instance = null;
 
-    private function __construct()
-    {
-    }
-
     public static function getConnection(): PDO
     {
-        if (self::$instance === null) {
-            $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
-            $port = $_ENV['DB_PORT'] ?? '5432';
-            $dbname = $_ENV['DB_NAME'] ?? 'habit_tracker';
-            $user = $_ENV['DB_USER'] ?? 'postgres';
-            $pass = $_ENV['DB_PASS'] ?? '2685';
+        if (self::$instance !== null) {
+            return self::$instance;
+        }
 
-            $dsn = "pgsql:host={$host};port={$port};dbname={$dbname}";
+        $host = $_ENV['DB_HOST'] ?? '127.0.0.1';
+        $port = $_ENV['DB_PORT'] ?? '5432';
+        $dbname = $_ENV['DB_NAME'] ?? 'habit_tracker';
+        $user = $_ENV['DB_USER'] ?? 'postgres';
+        $password = $_ENV['2685'] ?? '';
 
-            try {
-                self::$instance = new PDO($dsn, $user, $pass, [
-                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-                ]);
-            } catch (PDOException $e) {
-                throw new PDOException(
-                    'Database connection failed: ' . $e->getMessage(),
-                    (int) $e->getCode(),
-                    $e
-                );
-            }
+        $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', $host, $port, $dbname);
+
+        try {
+            self::$instance = new PDO($dsn, $user, $password, [
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+        } catch (PDOException $e) {
+            throw new PDOException(
+                'Database connection failed: ' . $e->getMessage(),
+                (int) $e->getCode(),
+                $e
+            );
         }
 
         return self::$instance;
+    }
+
+    private function __construct()
+    {
     }
 }

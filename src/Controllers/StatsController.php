@@ -4,17 +4,25 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Core\Attributes\Route;
-use App\Models\Habit;
-
-final class StatsController
+final class StatsController extends Controller
 {
     #[Route(path: '/stats', methods: ['GET'])]
     public function index(): void
     {
-        $stats = Habit::getStatsSummary();
-        $dailyStats = Habit::getDailyCompletionStats(14);
+        $summary = Habit::getStatsSummary();
+        $dailyStats = Habit::getDailyCompletionStats();
 
-        require dirname(__DIR__, 2) . '/views/stats/index.php';
+        $firstStat = array_first($dailyStats);
+        $lastStat = array_last($dailyStats);
+
+        $periodStart = is_array($lastStat) ? ($lastStat['completed_on'] ?? null) : null;
+        $periodEnd = is_array($firstStat) ? ($firstStat['completed_on'] ?? null) : null;
+
+        $this->render('stats/index', [
+            'summary' => $summary,
+            'dailyStats' => $dailyStats,
+            'periodStart' => $periodStart,
+            'periodEnd' => $periodEnd,
+        ]);
     }
 }
