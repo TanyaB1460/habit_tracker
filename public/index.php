@@ -17,8 +17,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 $dotenv = Dotenv::createImmutable(dirname(__DIR__));
 $dotenv->load();
 
-$appDebug = ($_ENV['APP_DEBUG'] ?? 'false') === 'true';
-
+$appDebug = true;
 ini_set('display_errors', $appDebug ? '1' : '0');
 error_reporting(E_ALL);
 

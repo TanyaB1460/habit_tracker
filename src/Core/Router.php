@@ -21,7 +21,6 @@ final class Router
                 $attributes = $method->getAttributes(Route::class);
 
                 foreach ($attributes as $attribute) {
-                    /** @var Route $routeMeta */
                     $routeMeta = $attribute->newInstance();
                     $path = $this->normalizePath($routeMeta->path);
 

@@ -42,7 +42,7 @@ declare(strict_types=1);
             Статус: <?= $habit['completed_today'] ? 'выполнено' : 'не выполнено' ?>
         </p>
 
-        <form method="POST" action="/habits/toggle">
+        <form method="POST" action="/toggle">
             <input type="hidden" name="habit_id" value="<?= (int) $habit['id'] ?>">
             <input type="hidden" name="date" value="<?= htmlspecialchars($today, ENT_QUOTES, 'UTF-8') ?>">
             <button type="submit">
