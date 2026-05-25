@@ -21,7 +21,7 @@ final class Database
         $port = $_ENV['DB_PORT'] ?? '5432';
         $dbname = $_ENV['DB_NAME'] ?? 'habit_tracker';
         $user = $_ENV['DB_USER'] ?? 'postgres';
-        $password = $_ENV['2685'] ?? '2685';
+        $password = $_ENV['DB_PASSWORD'] ?? '2685';
 
         $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', $host, $port, $dbname);
 
@@ -39,6 +39,16 @@ final class Database
         }
 
         return self::$instance;
+    }
+
+    public static function setConnection(PDO $pdo): void
+    {
+        self::$instance = $pdo;
+    }
+
+    public static function reset(): void
+    {
+        self::$instance = null;
     }
 
     private function __construct()

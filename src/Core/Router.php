@@ -5,8 +5,12 @@ declare(strict_types=1);
 namespace App\Core;
 
 use App\Core\Attributes\Route;
+use Nyholm\Psr7\Response;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
 use ReflectionClass;
 use ReflectionMethod;
+use ReflectionNamedType;
 
 final class Router
 {
@@ -37,15 +41,16 @@ final class Router
         }
     }
 
-    public function dispatch(string $httpMethod, string $uri): void
+    public function dispatch(ServerRequestInterface $request): ResponseInterface
     {
-        $method = strtoupper($httpMethod);
-        $path = $this->extractPath($uri);
+        $method = strtoupper($request->getMethod());
+        $path = $this->normalizePath($request->getUri()->getPath());
 
         if (!isset($this->routes[$method][$path])) {
-            http_response_code(404);
-            require dirname(__DIR__, 2) . '/views/errors/404.php';
-            return;
+            return $this->renderView(
+                dirname(__DIR__, 2) . '/views/errors/404.php',
+                404
+            );
         }
 
         $route = $this->routes[$method][$path];
@@ -53,26 +58,50 @@ final class Router
         $action = $route['action'];
 
         $controller = new $controllerClass();
-        $controller->$action();
+        $reflectionMethod = new ReflectionMethod($controller, $action);
+
+        $args = [];
+
+        foreach ($reflectionMethod->getParameters() as $parameter) {
+            $type = $parameter->getType();
+
+            if ($type instanceof ReflectionNamedType && $type->getName() === ServerRequestInterface::class) {
+                $args[] = $request;
+            }
+        }
+
+        $result = $reflectionMethod->invokeArgs($controller, $args);
+
+        if ($result instanceof ResponseInterface) {
+            return $result;
+        }
+
+        return new Response(200, ['Content-Type' => 'text/html; charset=UTF-8']);
+    }
+
+    public function renderView(string $viewPath, int $statusCode): ResponseInterface
+    {
+        ob_start();
+        require $viewPath;
+        $content = (string) ob_get_clean();
+
+        return new Response(
+            $statusCode,
+            ['Content-Type' => 'text/html; charset=UTF-8'],
+            $content
+        );
     }
 
     private function normalizePath(string $path): string
     {
+        $path = trim($path);
+
         if ($path === '' || $path === '/') {
             return '/';
         }
 
-        return '/' . ltrim(trim($path), '/');
-    }
+        $normalized = '/' . trim($path, '/');
 
-    private function extractPath(string $uri): string
-    {
-        $path = parse_url($uri, PHP_URL_PATH);
-
-        if (!is_string($path) || $path === '') {
-            return '/';
-        }
-
-        return $this->normalizePath($path);
+        return $normalized === '' ? '/' : $normalized;
     }
 }

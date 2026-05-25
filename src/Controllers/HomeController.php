@@ -4,27 +4,35 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Exceptions\ValidationException;
-use App\Http\Response;
-use App\Models\Habit;
 use App\Core\Attributes\Route;
-final class HomeController
+use App\Core\Controller;
+use App\Exceptions\ValidationException;
+use App\Repositories\HabitRepository;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+final class HomeController extends Controller
 {
-    public function __construct(
-        private ?object $habitManager = null
-    ) {
+    private HabitRepository $habitRepository;
+
+    public function __construct(?HabitRepository $habitRepository = null)
+    {
+        $this->habitRepository = $habitRepository ?? new HabitRepository();
     }
 
     #[Route(path: '/', methods: ['GET'])]
-    public function index(): void
+    public function index(): ResponseInterface
     {
         $today = date('Y-m-d');
-        $habits = Habit::getAllWithStatusForDate($today);
+        $habits = $this->habitRepository->getAllWithStatusForDate($today);
 
-        require dirname(__DIR__, 2) . '/views/home.php';
+        return $this->render('home', [
+            'today' => $today,
+            'habits' => $habits,
+        ]);
     }
 
-    public function toggleAction(int $habitId, string $date): Response
+    public function toggleAction(int $habitId, string $date): ResponseInterface
     {
         if ($habitId <= 0) {
             throw new ValidationException([
@@ -32,28 +40,23 @@ final class HomeController
             ], 'Ошибка валидации');
         }
 
-        if ($this->habitManager !== null) {
-            $this->habitManager->toggleForDate($habitId, $date);
-        } else {
-            Habit::toggleForDate($habitId, $date);
-        }
+        $this->habitRepository->toggleForDate($habitId, $date);
 
-        return Response::redirect('/');
+        return $this->redirect('/');
     }
 
     #[Route(path: '/toggle', methods: ['POST'])]
-    public function toggle(): void
+    public function toggle(ServerRequestInterface $request): ResponseInterface
     {
-        $habitId = isset($_POST['habit_id']) ? (int) $_POST['habit_id'] : 0;
-        $date = $_POST['date'] ?? date('Y-m-d');
+        $data = $request->getParsedBody();
 
-        $response = $this->toggleAction($habitId, $date);
-
-        foreach ($response->headers as $name => $value) {
-            header($name . ': ' . $value, true, $response->statusCode);
+        if (!is_array($data)) {
+            $data = [];
         }
 
-        http_response_code($response->statusCode);
-        exit;
+        $habitId = isset($data['habit_id']) ? (int) $data['habit_id'] : 0;
+        $date = is_string($data['date'] ?? null) ? $data['date'] : date('Y-m-d');
+
+        return $this->toggleAction($habitId, $date);
     }
 }

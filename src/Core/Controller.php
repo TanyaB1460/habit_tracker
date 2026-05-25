@@ -4,25 +4,33 @@ declare(strict_types=1);
 
 namespace App\Core;
 
+use Nyholm\Psr7\Response;
+use Psr\Http\Message\ResponseInterface;
+
 abstract class Controller
 {
-    protected Router $router;
-
-    public function __construct()
-    {
-        $this->router = new Router();
-    }
-
-    protected function render(string $view, array $data = []): void
+    protected function render(string $view, array $data = [], int $statusCode = 200): ResponseInterface
     {
         extract($data, EXTR_SKIP);
+
+        ob_start();
         require dirname(__DIR__, 2) . '/views/' . $view . '.php';
+        $content = (string) ob_get_clean();
+
+        return new Response(
+            $statusCode,
+            ['Content-Type' => 'text/html; charset=UTF-8'],
+            $content
+        );
     }
 
-    protected function redirect(string $path): void
+    protected function redirect(string $path, int $statusCode = 303): ResponseInterface
     {
-        header('Location: ' . $path, true, 303);
-        exit;
+        return new Response(
+            $statusCode,
+            ['Location' => $path],
+            ''
+        );
     }
 
     protected function ensureString(mixed $value, string $default = ''): string

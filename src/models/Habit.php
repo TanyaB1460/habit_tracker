@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use PDO;
-use Throwable;
 use App\Core\Database;
+use Throwable;
 
 final class Habit
 {
@@ -17,10 +16,19 @@ final class Habit
             $pdo = Database::getConnection();
 
             $stmt = $pdo->query(
-                'SELECT id, name, description, frequency, is_active, created_at, updated_at
-                 FROM habits
-                 WHERE is_active = TRUE
-                 ORDER BY id DESC'
+                'SELECT h.id,
+                        h.name,
+                        h.description,
+                        h.frequency,
+                        h.category_id,
+                        c.name AS category_name,
+                        h.is_active,
+                        h.created_at,
+                        h.updated_at
+                 FROM habits h
+                 LEFT JOIN habit_categories c ON c.id = h.category_id
+                 WHERE h.is_active = TRUE
+                 ORDER BY h.id DESC'
             );
 
             return $stmt->fetchAll();
@@ -37,11 +45,21 @@ final class Habit
             $pdo = Database::getConnection();
 
             $stmt = $pdo->prepare(
-                'SELECT id, name, description, frequency, is_active, created_at, updated_at
-                 FROM habits
-                 WHERE id = :id
+                'SELECT h.id,
+                        h.name,
+                        h.description,
+                        h.frequency,
+                        h.category_id,
+                        c.name AS category_name,
+                        h.is_active,
+                        h.created_at,
+                        h.updated_at
+                 FROM habits h
+                 LEFT JOIN habit_categories c ON c.id = h.category_id
+                 WHERE h.id = :id
                  LIMIT 1'
             );
+
             $stmt->execute(['id' => $id]);
 
             $habit = $stmt->fetch();
@@ -53,20 +71,25 @@ final class Habit
         }
     }
 
-    public static function create(string $name, ?string $description, string $frequency = 'daily'): void
-    {
+    public static function create(
+        string $name,
+        ?string $description,
+        string $frequency = 'daily',
+        ?int $categoryId = null
+    ): void {
         try {
             $pdo = Database::getConnection();
 
             $stmt = $pdo->prepare(
-                'INSERT INTO habits (name, description, frequency)
-                 VALUES (:name, :description, :frequency)'
+                'INSERT INTO habits (name, description, frequency, category_id)
+                 VALUES (:name, :description, :frequency, :category_id)'
             );
 
             $stmt->execute([
                 'name' => $name,
                 'description' => $description,
                 'frequency' => $frequency,
+                'category_id' => $categoryId,
             ]);
         } catch (Throwable $e) {
             error_log($e->getMessage());
@@ -74,8 +97,13 @@ final class Habit
         }
     }
 
-    public static function update(int $id, string $name, ?string $description, string $frequency): void
-    {
+    public static function update(
+        int $id,
+        string $name,
+        ?string $description,
+        string $frequency,
+        ?int $categoryId = null
+    ): void {
         try {
             $pdo = Database::getConnection();
 
@@ -84,6 +112,7 @@ final class Habit
                  SET name = :name,
                      description = :description,
                      frequency = :frequency,
+                     category_id = :category_id,
                      updated_at = CURRENT_TIMESTAMP
                  WHERE id = :id'
             );
@@ -93,6 +122,7 @@ final class Habit
                 'name' => $name,
                 'description' => $description,
                 'frequency' => $frequency,
+                'category_id' => $categoryId,
             ]);
         } catch (Throwable $e) {
             error_log($e->getMessage());
@@ -115,49 +145,15 @@ final class Habit
 
     public static function toggleForDate(int $habitId, string $date): void
     {
-        try {
-            $pdo = Database::getConnection();
+        $existing = HabitLog::findByHabitAndDate($habitId, $date);
 
-            $stmt = $pdo->prepare(
-                'SELECT id
-                 FROM habit_logs
-                 WHERE habit_id = :habit_id AND completed_on = :completed_on
-                 LIMIT 1'
-            );
-            $stmt->execute([
-                'habit_id' => $habitId,
-                'completed_on' => $date,
-            ]);
-
-            $existing = $stmt->fetch();
-
-            if ($existing) {
-                $deleteStmt = $pdo->prepare(
-                    'DELETE FROM habit_logs
-                     WHERE habit_id = :habit_id AND completed_on = :completed_on'
-                );
-                $deleteStmt->execute([
-                    'habit_id' => $habitId,
-                    'completed_on' => $date,
-                ]);
-
-                return;
-            }
-
-            $insertStmt = $pdo->prepare(
-                'INSERT INTO habit_logs (habit_id, completed_on)
-                 VALUES (:habit_id, :completed_on)'
-            );
-            $insertStmt->execute([
-                'habit_id' => $habitId,
-                'completed_on' => $date,
-            ]);
-        } catch (Throwable $e) {
-            error_log($e->getMessage());
-            throw $e;
+        if ($existing !== null) {
+            HabitLog::deleteByHabitAndDate($habitId, $date);
+            return;
         }
-    }
 
+        HabitLog::create($habitId, $date);
+    }
 
     #[\NoDiscard('Данные для главной страницы должны быть использованы')]
     public static function getAllWithStatusForDate(string $date): array
@@ -170,6 +166,8 @@ final class Habit
                         h.name,
                         h.description,
                         h.frequency,
+                        h.category_id,
+                        c.name AS category_name,
                         h.is_active,
                         h.created_at,
                         h.updated_at,
@@ -180,6 +178,7 @@ final class Habit
                               AND hl.completed_on = :date
                         ) AS completed_today
                  FROM habits h
+                 LEFT JOIN habit_categories c ON c.id = h.category_id
                  WHERE h.is_active = TRUE
                  ORDER BY h.id DESC'
             );
@@ -199,24 +198,17 @@ final class Habit
         try {
             $pdo = Database::getConnection();
 
-            $totalHabitsStmt = $pdo->query('SELECT COUNT(*) FROM habits WHERE is_active = TRUE');
-            $totalHabits = (int) $totalHabitsStmt->fetchColumn();
-
-            $totalLogsStmt = $pdo->query('SELECT COUNT(*) FROM habit_logs');
-            $totalLogs = (int) $totalLogsStmt->fetchColumn();
-
-            $todayStmt = $pdo->prepare(
+            $totalHabitsStmt = $pdo->query(
                 'SELECT COUNT(*)
-                 FROM habit_logs
-                 WHERE completed_on = :today'
+                 FROM habits
+                 WHERE is_active = TRUE'
             );
-            $todayStmt->execute(['today' => date('Y-m-d')]);
-            $completedToday = (int) $todayStmt->fetchColumn();
+            $totalHabits = (int) $totalHabitsStmt->fetchColumn();
 
             return [
                 'total_habits' => $totalHabits,
-                'total_logs' => $totalLogs,
-                'completed_today' => $completedToday,
+                'total_logs' => HabitLog::countAll(),
+                'completed_today' => HabitLog::countByDate(date('Y-m-d')),
             ];
         } catch (Throwable $e) {
             error_log($e->getMessage());
@@ -224,28 +216,10 @@ final class Habit
         }
     }
 
-
     #[\NoDiscard('Статистика по дням должна быть использована')]
     public static function getDailyCompletionStats(int $days = 14): array
     {
-        try {
-            $pdo = Database::getConnection();
-
-            $stmt = $pdo->prepare(
-                'SELECT completed_on, COUNT(*) AS total
-                 FROM habit_logs
-                 WHERE completed_on >= CURRENT_DATE - (:days * INTERVAL \'1 day\')
-                 GROUP BY completed_on
-                 ORDER BY completed_on DESC'
-            );
-
-            $stmt->bindValue(':days', $days, PDO::PARAM_INT);
-            $stmt->execute();
-
-            return $stmt->fetchAll();
-        } catch (Throwable $e) {
-            error_log($e->getMessage());
-            throw $e;
-        }
+        return HabitLog::getDailyStats($days);
     }
+
 }

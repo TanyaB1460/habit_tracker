@@ -1,5 +1,11 @@
 <?php
+
 declare(strict_types=1);
+
+$frequencyLabels = [
+        'daily' => 'ежедневно',
+        'weekly' => 'еженедельно',
+];
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -7,81 +13,135 @@ declare(strict_types=1);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Привычки</title>
+
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <script src="/assets/js/app.js" defer></script>
 </head>
 <body>
-<p>
-    <a href="/">Главная</a> |
-    <a href="/habits">Привычки</a> |
-    <a href="/stats">Статистика</a>
-</p>
+<div class="page">
+    <header class="page-header">
+        <div class="page-heading">
+            <h1 class="page-title">Управление привычками</h1>
+            <p class="page-subtitle">Создание, просмотр, редактирование и удаление привычек</p>
+        </div>
 
-<h1>Управление привычками</h1>
+        <nav class="nav" aria-label="Основная навигация">
+            <a class="nav-link" href="/">Главная</a>
+            <a class="nav-link" href="/habits">Привычки</a>
+            <a class="nav-link" href="/stats">Статистика</a>
+        </nav>
+    </header>
 
-<h2>Добавить привычку</h2>
+    <main id="main" class="content">
+        <section class="section">
+            <div class="card">
+                <h2 class="card-title">Добавить привычку</h2>
 
-<form method="POST" action="/habits/create">
-    <p>
-        <label for="name">Название</label><br>
-        <input type="text" id="name" name="name" required>
-    </p>
+                <form method="POST" action="/habits/create" class="form">
+                    <div class="form-group">
+                        <label class="form-label" for="name">Название</label>
+                        <input class="form-input" type="text" id="name" name="name" required>
+                    </div>
 
-    <p>
-        <label for="description">Описание</label><br>
-        <textarea id="description" name="description" rows="4" cols="40"></textarea>
-    </p>
+                    <div class="form-group">
+                        <label class="form-label" for="description">Описание</label>
+                        <textarea
+                                class="form-textarea"
+                                id="description"
+                                name="description"
+                                rows="4"
+                        ></textarea>
+                    </div>
 
-    <p>
-        <label for="frequency">Частота</label><br>
-        <select id="frequency" name="frequency">
-            <option value="daily">ежедневно</option>
-            <option value="weekly">еженедельно</option>
-        </select>
-    </p>
+                    <div class="form-group">
+                        <label class="form-label" for="frequency">Частота</label>
+                        <select class="form-select" id="frequency" name="frequency">
+                            <option value="daily">ежедневно</option>
+                            <option value="weekly">еженедельно</option>
+                        </select>
+                    </div>
 
-    <p>
-        <button type="submit">Создать</button>
-    </p>
-</form>
+                    <div class="form-group">
+                        <label class="form-label" for="category_id">Категория</label>
+                        <select class="form-select" id="category_id" name="category_id">
+                            <option value="">Без категории</option>
+                            <?php foreach ($categories as $category): ?>
+                                <option value="<?= (int) $category['id'] ?>">
+                                    <?= htmlspecialchars((string) $category['name'], ENT_QUOTES, 'UTF-8') ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
 
-<hr>
+                    <div class="actions">
+                        <button class="button button-primary" type="submit">Создать</button>
+                    </div>
+                </form>
+            </div>
+        </section>
 
-<h2>Список привычек</h2>
+        <section class="section">
+            <h2 class="card-title">Список привычек</h2>
 
-<?php
-$frequencyLabels = [
-        'daily' => 'ежедневно',
-        'weekly' => 'еженедельно',
-];
-?>
+            <?php if (empty($habits)): ?>
+                <div class="empty-state">
+                    <p class="empty-text">Привычек пока нет.</p>
+                </div>
+            <?php else: ?>
+                <div class="habits-list">
+                    <?php foreach ($habits as $habit): ?>
+                        <?php
+                        $frequencyLabel = $frequencyLabels[$habit['frequency']] ?? (string) $habit['frequency'];
+                        ?>
+                        <article class="habit-card">
+                            <div class="habit-card__top">
+                                <h3 class="habit-title">
+                                    <?= htmlspecialchars((string) $habit['name'], ENT_QUOTES, 'UTF-8') ?>
+                                </h3>
+                            </div>
 
-<?php if (empty($habits)): ?>
-    <p>Привычек пока нет.</p>
-<?php else: ?>
-    <?php foreach ($habits as $habit): ?>
-        <article>
-            <h3><?= htmlspecialchars($habit['name'], ENT_QUOTES, 'UTF-8') ?></h3>
+                            <?php if (!empty($habit['description'])): ?>
+                                <p class="habit-description">
+                                    <?= htmlspecialchars((string) $habit['description'], ENT_QUOTES, 'UTF-8') ?>
+                                </p>
+                            <?php endif; ?>
 
-            <?php if (!empty($habit['description'])): ?>
-                <p><?= htmlspecialchars($habit['description'], ENT_QUOTES, 'UTF-8') ?></p>
+                            <p class="habit-meta">
+                                Частота:
+                                <?= htmlspecialchars($frequencyLabel, ENT_QUOTES, 'UTF-8') ?>
+                            </p>
+
+                            <?php if (!empty($habit['category_name'])): ?>
+                                <p class="habit-meta">
+                                    Категория:
+                                    <?= htmlspecialchars((string) $habit['category_name'], ENT_QUOTES, 'UTF-8') ?>
+                                </p>
+                            <?php endif; ?>
+
+                            <div class="actions">
+                                <a
+                                        class="button button-secondary"
+                                        href="/habits/edit?id=<?= (int) $habit['id'] ?>"
+                                >
+                                    Редактировать
+                                </a>
+
+                                <form
+                                        method="POST"
+                                        action="/habits/delete"
+                                        class="inline-form"
+                                        data-confirm="Удалить привычку?"
+                                >
+                                    <input type="hidden" name="id" value="<?= (int) $habit['id'] ?>">
+                                    <button class="button button-danger" type="submit">Удалить</button>
+                                </form>
+                            </div>
+                        </article>
+                    <?php endforeach; ?>
+                </div>
             <?php endif; ?>
-
-            <p>
-                Частота:
-                <?= htmlspecialchars($frequencyLabels[$habit['frequency']] ?? $habit['frequency'], ENT_QUOTES, 'UTF-8') ?>
-            </p>
-
-            <p>
-                <a href="/habits/edit?id=<?= (int) $habit['id'] ?>">Редактировать</a>
-            </p>
-
-            <form method="POST" action="/habits/delete" onsubmit="return confirm('Удалить привычку?');">
-                <input type="hidden" name="id" value="<?= (int) $habit['id'] ?>">
-                <button type="submit">Удалить</button>
-            </form>
-
-            <hr>
-        </article>
-    <?php endforeach; ?>
-<?php endif; ?>
+        </section>
+    </main>
+</div>
 </body>
 </html>

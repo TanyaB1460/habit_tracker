@@ -4,28 +4,45 @@ declare(strict_types=1);
 
 namespace App\Controllers;
 
-use App\Exceptions\ValidationException;
-use App\Http\Response;
-use App\Models\Habit;
 use App\Core\Attributes\Route;
-final class HabitController
+use App\Core\Controller;
+use App\Exceptions\ValidationException;
+use App\Models\HabitCategory;
+use App\Repositories\HabitRepository;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+
+final class HabitController extends Controller
 {
+    private ?object $habitValidator;
+    private HabitRepository $habitRepository;
+
     public function __construct(
-        private ?object $habitValidator = null,
-        private ?object $habitManager = null
+        ?object $habitValidator = null,
+        ?HabitRepository $habitRepository = null
     ) {
+        $this->habitValidator = $habitValidator;
+        $this->habitRepository = $habitRepository ?? new HabitRepository();
     }
 
     #[Route(path: '/habits', methods: ['GET'])]
-    public function index(): void
+    public function index(): ResponseInterface
     {
-        $habits = Habit::getAll();
+        $habits = $this->habitRepository->getAll();
+        $categories = HabitCategory::getAll();
 
-        require dirname(__DIR__, 2) . '/views/habits/index.php';
+        return $this->render('habits/index', [
+            'habits' => $habits,
+            'categories' => $categories,
+        ]);
     }
 
-    public function createAction(string $name, ?string $description, string $frequency): Response
-    {
+    public function createAction(
+        string $name,
+        ?string $description,
+        string $frequency,
+        ?int $categoryId = null
+    ): ResponseInterface {
         $errors = [];
 
         if ($this->habitValidator !== null) {
@@ -33,6 +50,7 @@ final class HabitController
                 'name' => $name,
                 'description' => $description,
                 'frequency' => $frequency,
+                'category_id' => $categoryId,
             ]);
         }
 
@@ -40,88 +58,104 @@ final class HabitController
             throw new ValidationException($errors, 'Ошибка валидации');
         }
 
-        if ($this->habitManager !== null) {
-            $this->habitManager->create($name, $description, $frequency);
-        } else {
-            Habit::create($name, $description, $frequency);
-        }
+        $this->habitRepository->create($name, $description, $frequency, $categoryId);
 
-        return Response::redirect('/habits');
+        return $this->redirect('/habits');
     }
 
     #[Route(path: '/habits/create', methods: ['POST'])]
-    public function create(): void
+    public function create(ServerRequestInterface $request): ResponseInterface
     {
-        $name = trim($_POST['name'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $frequency = trim($_POST['frequency'] ?? 'daily');
+        $data = $request->getParsedBody();
 
-        $response = $this->createAction(
-            $name,
-            $description !== '' ? $description : null,
-            $frequency
-        );
-
-        foreach ($response->headers as $name => $value) {
-            header($name . ': ' . $value, true, $response->statusCode);
+        if (!is_array($data)) {
+            $data = [];
         }
 
-        http_response_code($response->statusCode);
+        $name = is_string($data['name'] ?? null) ? trim($data['name']) : '';
+        $description = is_string($data['description'] ?? null) ? trim($data['description']) : '';
+        $frequency = is_string($data['frequency'] ?? null) ? trim($data['frequency']) : 'daily';
+        $categoryId = isset($data['category_id']) && $data['category_id'] !== ''
+            ? (int) $data['category_id']
+            : null;
+
+        return $this->createAction(
+            $name,
+            $description !== '' ? $description : null,
+            $frequency,
+            $categoryId
+        );
     }
 
     #[Route(path: '/habits/edit', methods: ['GET'])]
-    public function edit(): void
+    public function edit(ServerRequestInterface $request): ResponseInterface
     {
-        $id = isset($_GET['id']) ? (int) $_GET['id'] : 0;
+        $query = $request->getQueryParams();
+        $id = isset($query['id']) ? (int) $query['id'] : 0;
 
         if ($id <= 0) {
-            http_response_code(404);
-            require dirname(__DIR__, 2) . '/views/errors/404.php';
-            return;
+            return $this->render('errors/404', [], 404);
         }
 
-        $habit = Habit::findById($id);
+        $habit = $this->habitRepository->findById($id);
 
         if ($habit === null) {
-            http_response_code(404);
-            require dirname(__DIR__, 2) . '/views/errors/404.php';
-            return;
+            return $this->render('errors/404', [], 404);
         }
 
-        require dirname(__DIR__, 2) . '/views/habits/edit.php';
+        $categories = HabitCategory::getAll();
+
+        return $this->render('habits/edit', [
+            'habit' => $habit,
+            'categories' => $categories,
+        ]);
     }
 
     #[Route(path: '/habits/update', methods: ['POST'])]
-    public function update(): void
+    public function update(ServerRequestInterface $request): ResponseInterface
     {
-        $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
-        $name = trim($_POST['name'] ?? '');
-        $description = trim($_POST['description'] ?? '');
-        $frequency = trim($_POST['frequency'] ?? 'daily');
+        $data = $request->getParsedBody();
+
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        $id = isset($data['id']) ? (int) $data['id'] : 0;
+        $name = is_string($data['name'] ?? null) ? trim($data['name']) : '';
+        $description = is_string($data['description'] ?? null) ? trim($data['description']) : '';
+        $frequency = is_string($data['frequency'] ?? null) ? trim($data['frequency']) : 'daily';
+        $categoryId = isset($data['category_id']) && $data['category_id'] !== ''
+            ? (int) $data['category_id']
+            : null;
 
         if ($id > 0 && $name !== '') {
-            Habit::update(
+            $this->habitRepository->update(
                 $id,
                 $name,
                 $description !== '' ? $description : null,
-                $frequency
+                $frequency,
+                $categoryId
             );
-
-            header('Location: /habits', true, 303);
-            exit;
         }
+
+        return $this->redirect('/habits');
     }
 
     #[Route(path: '/habits/delete', methods: ['POST'])]
-    public function delete(): void
+    public function delete(ServerRequestInterface $request): ResponseInterface
     {
-        $id = isset($_POST['id']) ? (int) $_POST['id'] : 0;
+        $data = $request->getParsedBody();
 
-        if ($id > 0) {
-            Habit::delete($id);
+        if (!is_array($data)) {
+            $data = [];
         }
 
-        header('Location: /habits', true, 303);
-        exit;
+        $id = isset($data['id']) ? (int) $data['id'] : 0;
+
+        if ($id > 0) {
+            $this->habitRepository->delete($id);
+        }
+
+        return $this->redirect('/habits');
     }
 }

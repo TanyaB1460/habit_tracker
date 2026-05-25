@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 ?>
 <!DOCTYPE html>
@@ -7,46 +8,78 @@ declare(strict_types=1);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Статистика</title>
+
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <script src="/assets/js/app.js" defer></script>
 </head>
 <body>
-<h1>Статистика</h1>
+<div class="page">
+    <header class="page-header">
+        <div class="page-heading">
+            <h1 class="page-title">Статистика</h1>
+            <p class="page-subtitle">Сводка по привычкам и активности</p>
+        </div>
 
-<p>
-    <a href="/">Главная</a> |
-    <a href="/habits">Привычки</a>
-</p>
+        <nav class="nav" aria-label="Основная навигация">
+            <a class="nav-link" href="/">Главная</a>
+            <a class="nav-link" href="/habits">Привычки</a>
+            <a class="nav-link" href="/stats">Статистика</a>
+        </nav>
+    </header>
 
-<h2>Общая информация</h2>
+    <main id="main" class="content">
+        <section class="section">
+            <h2 class="card-title">Общая информация</h2>
 
-<u
+            <div class="stats-grid">
+                <article class="stat-card">
+                    <p class="stat-label">Всего активных привычек</p>
+                    <p class="stat-value"><?= (int) ($summary['total_habits'] ?? 0) ?></p>
+                </article>
 
-<ul>
-    >Всего активных привычек: <?= (int) ($stats['total_habits'] ?? 0) ?></l/li>
-    >Всего отметок выполнения: <?= (int) ($stats['total_logs'] ?? 0) ?></l/li>
-    >Выполнено сегодня: <?= (int) ($stats['completed_today'] ?? 0) ?></li>
-</ul>
+                <article class="stat-card">
+                    <p class="stat-label">Всего отметок выполнения</p>
+                    <p class="stat-value"><?= (int) ($summary['total_logs'] ?? 0) ?></p>
+                </article>
 
-<h2>Активность за последние дни</h2>
+                <article class="stat-card">
+                    <p class="stat-label">Выполнено сегодня</p>
+                    <p class="stat-value"><?= (int) ($summary['completed_today'] ?? 0) ?></p>
+                </article>
+            </div>
+        </section>
 
-<?php if (empty($dailyStats)): ?>
-    <p>Пока нет данных для статистики.</p>
-<?php else: ?>
-    <table border="1" cellpadding="6" cellspacing="0">
-        <thead>
-        <tr>
-            <th>Дата</th>
-            <th>Количество выполнений</th>
-        </tr>
-        </thead>
-        <tbody>
-        <?php foreach ($dailyStats as $row): ?>
-            <tr>
-                <td><?= htmlspecialchars((string) $row['completed_on'], ENT_QUOTES, 'UTF-8') ?></td>
-                <td><?= (int) $row['total'] ?></td>
-            </tr>
-        <?php endforeach; ?>
-        </tbody>
-    </table>
-<?php endif; ?>
+        <section class="section">
+            <h2 class="card-title">Активность за последние дни</h2>
+
+            <?php if (empty($dailyStats)): ?>
+                <div class="empty-state">
+                    <p class="empty-text">Пока нет данных для статистики.</p>
+                </div>
+            <?php else: ?>
+                <div class="table-wrap">
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th scope="col">Дата</th>
+                            <th scope="col">Количество выполнений</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <?php foreach ($dailyStats as $row): ?>
+                            <tr>
+                                <td>
+                                    <?= htmlspecialchars((string) ($row['completed_on'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                                </td>
+                                <td><?= (int) ($row['total'] ?? 0) ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
+        </section>
+    </main>
+</div>
 </body>
 </html>
