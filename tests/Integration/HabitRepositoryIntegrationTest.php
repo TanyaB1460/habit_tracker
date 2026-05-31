@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Integration;
 
 use App\Core\Database;
+use App\Models\Habit;
 use App\Repositories\HabitRepository;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -16,8 +17,6 @@ final class HabitRepositoryIntegrationTest extends TestCase
 
     protected function setUp(): void
     {
-        parent::setUp();
-
         $this->pdo = new PDO('sqlite::memory:');
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
@@ -31,47 +30,53 @@ final class HabitRepositoryIntegrationTest extends TestCase
     protected function tearDown(): void
     {
         Database::reset();
-        unset($this->pdo);
-
         parent::tearDown();
     }
 
-    public function testCreateHabitPersistsRow(): void
+    public function testSaveNewHabitPersistsRow(): void
     {
-        $this->repository->create('Учёба', 'Читать 30 минут', 'daily', null);
-
-        $stmt = $this->pdo->query(
-            'SELECT id, name, description, frequency, is_active FROM habits'
+        $habit = new Habit(
+            id: null,
+            name: 'Читать',
+            description: '30 минут',
+            frequency: 'daily',
+            categoryId: null,
         );
+
+        $this->repository->save($habit);
+
+        $stmt = $this->pdo->query('SELECT name, description, frequency, is_active FROM habits');
         $rows = $stmt->fetchAll();
 
         $this->assertCount(1, $rows);
-        $this->assertSame('Учёба', $rows[0]['name']);
-        $this->assertSame('Читать 30 минут', $rows[0]['description']);
+        $this->assertSame('Читать', $rows[0]['name']);
+        $this->assertSame('30 минут', $rows[0]['description']);
         $this->assertSame('daily', $rows[0]['frequency']);
         $this->assertSame(1, (int) $rows[0]['is_active']);
     }
 
-    public function testUpdateHabitUpdatesRow(): void
+    public function testSaveExistingHabitUpdatesRow(): void
     {
         $this->pdo->exec(
             "INSERT INTO habits (name, description, frequency, is_active)
-             VALUES ('Учёба', 'старое описание', 'daily', 1)"
+             VALUES ('Старое', 'Старое описание', 'daily', 1)"
         );
         $id = (int) $this->pdo->lastInsertId();
 
-        $this->repository->update($id, 'Работа', 'новое описание', 'weekly', null);
+        $habit = $this->repository->findById($id);
+        $this->assertNotNull($habit);
 
-        $stmt = $this->pdo->prepare(
-            'SELECT name, description, frequency
-             FROM habits
-             WHERE id = :id'
-        );
+        $habit->name = 'Новое';
+        $habit->description = 'Новое описание';
+        $habit->frequency = 'weekly';
+        $this->repository->save($habit);
+
+        $stmt = $this->pdo->prepare('SELECT name, description, frequency FROM habits WHERE id = :id');
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
 
-        $this->assertSame('Работа', $row['name']);
-        $this->assertSame('новое описание', $row['description']);
+        $this->assertSame('Новое', $row['name']);
+        $this->assertSame('Новое описание', $row['description']);
         $this->assertSame('weekly', $row['frequency']);
     }
 
@@ -83,13 +88,51 @@ final class HabitRepositoryIntegrationTest extends TestCase
         );
         $id = (int) $this->pdo->lastInsertId();
 
-        $this->repository->delete($id);
+        $habit = $this->repository->findById($id);
+        $this->assertNotNull($habit);
+
+        $this->repository->delete($habit);
 
         $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM habits WHERE id = :id');
         $stmt->execute(['id' => $id]);
-        $count = (int) $stmt->fetchColumn();
+        $this->assertSame(0, (int) $stmt->fetchColumn());
+    }
 
-        $this->assertSame(0, $count);
+    public function testFindByIdReturnsNullForMissingHabit(): void
+    {
+        $result = $this->repository->findById(999);
+        $this->assertNull($result);
+    }
+
+    public function testGetAllReturnsOnlyActiveHabits(): void
+    {
+        $this->pdo->exec(
+            "INSERT INTO habits (name, description, frequency, is_active) VALUES
+             ('Активная', NULL, 'daily', 1),
+             ('Неактивная', NULL, 'daily', 0)"
+        );
+
+        $habits = $this->repository->getAll();
+
+        $this->assertCount(1, $habits);
+        $this->assertSame('Активная', $habits[0]->name);
+    }
+
+    public function testToggleForDateCreatesAndDeletesLog(): void
+    {
+        $this->pdo->exec(
+            "INSERT INTO habits (name, description, frequency, is_active)
+             VALUES ('Спорт', NULL, 'daily', 1)"
+        );
+        $habitId = (int) $this->pdo->lastInsertId();
+
+        $this->repository->toggleForDate($habitId, '2024-05-01');
+        $stmt = $this->pdo->query('SELECT COUNT(*) FROM habit_logs');
+        $this->assertSame(1, (int) $stmt->fetchColumn());
+
+        $this->repository->toggleForDate($habitId, '2024-05-01');
+        $stmt = $this->pdo->query('SELECT COUNT(*) FROM habit_logs');
+        $this->assertSame(0, (int) $stmt->fetchColumn());
     }
 
     private function createSchema(): void
@@ -99,7 +142,7 @@ final class HabitRepositoryIntegrationTest extends TestCase
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name VARCHAR(255) NOT NULL,
                 description TEXT NULL,
-                frequency VARCHAR(20) NOT NULL,
+                frequency VARCHAR(20) NOT NULL DEFAULT "daily",
                 category_id INTEGER NULL,
                 is_active BOOLEAN NOT NULL DEFAULT 1,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,

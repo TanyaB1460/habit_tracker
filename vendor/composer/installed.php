@@ -3,7 +3,7 @@
         'name' => 'student/habit-tracker',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '5f168de77abb64f4221cdce3f12c155f2fa62e96',
+        'reference' => '9c1ebb9956aea993d91bfc2dd20a6bb4a2166167',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -406,7 +406,7 @@
         'student/habit-tracker' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '5f168de77abb64f4221cdce3f12c155f2fa62e96',
+            'reference' => '9c1ebb9956aea993d91bfc2dd20a6bb4a2166167',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

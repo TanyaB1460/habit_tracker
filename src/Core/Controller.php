@@ -9,6 +9,7 @@ use Psr\Http\Message\ResponseInterface;
 
 abstract class Controller
 {
+    //Рендер HTML-шаблона в PSR-7 Response
     protected function render(string $view, array $data = [], int $statusCode = 200): ResponseInterface
     {
         extract($data, EXTR_SKIP);
@@ -24,6 +25,7 @@ abstract class Controller
         );
     }
 
+    //Создать редирект с заголовком Location.
     protected function redirect(string $path, int $statusCode = 303): ResponseInterface
     {
         return new Response(
@@ -33,11 +35,13 @@ abstract class Controller
         );
     }
 
+    //Гарантировать строку, иначе вернуть значение по умолчанию.
     protected function ensureString(mixed $value, string $default = ''): string
     {
         return is_string($value) ? $value : $default;
     }
 
+    //Преобразовать пустую строку в null
     protected function emptyToNull(?string $value): ?string
     {
         if ($value === null) {
@@ -47,6 +51,7 @@ abstract class Controller
         return $value === '' ? null : $value;
     }
 
+    //Прочитать и валидировать целое число из POST
     protected function postInt(string $key): ?int
     {
         $value = $_POST[$key] ?? null;
@@ -60,6 +65,7 @@ abstract class Controller
         return $validated === false ? null : $validated;
     }
 
+    //Прочитать и валидировать целое число из GET
     protected function getInt(string $key): ?int
     {
         $value = $_GET[$key] ?? null;

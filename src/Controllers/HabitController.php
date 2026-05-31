@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Attributes\Route;
 use App\Core\Controller;
 use App\Exceptions\ValidationException;
+use App\Models\Habit;
 use App\Models\HabitCategory;
 use App\Repositories\HabitRepository;
 use Psr\Http\Message\ResponseInterface;
@@ -58,7 +59,14 @@ final class HabitController extends Controller
             throw new ValidationException($errors, 'Ошибка валидации');
         }
 
-        $this->habitRepository->create($name, $description, $frequency, $categoryId);
+        $habit = new Habit(
+            id: null,
+            name: $name,
+            description: $description,
+            frequency: $frequency,
+            categoryId: $categoryId,
+        );
+        $this->habitRepository->save($habit);
 
         return $this->redirect('/habits');
     }
@@ -129,13 +137,15 @@ final class HabitController extends Controller
             : null;
 
         if ($id > 0 && $name !== '') {
-            $this->habitRepository->update(
-                $id,
-                $name,
-                $description !== '' ? $description : null,
-                $frequency,
-                $categoryId
-            );
+            $habit = $this->habitRepository->findById($id);
+
+            if ($habit !== null) {
+                $habit->name = $name;
+                $habit->description = $description !== '' ? $description : null;
+                $habit->frequency = $frequency;
+                $habit->categoryId = $categoryId;
+                $this->habitRepository->save($habit);
+            }
         }
 
         return $this->redirect('/habits');
@@ -153,7 +163,11 @@ final class HabitController extends Controller
         $id = isset($data['id']) ? (int) $data['id'] : 0;
 
         if ($id > 0) {
-            $this->habitRepository->delete($id);
+            $habit = $this->habitRepository->findById($id);
+
+            if ($habit !== null) {
+                $this->habitRepository->delete($habit);
+            }
         }
 
         return $this->redirect('/habits');

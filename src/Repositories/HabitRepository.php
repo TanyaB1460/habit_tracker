@@ -13,33 +13,19 @@ class HabitRepository
         return Habit::getAll();
     }
 
-    public function findById(int $id): ?array
+    public function findById(int $id): ?Habit
     {
         return Habit::findById($id);
     }
 
-    public function create(
-        string $name,
-        ?string $description,
-        string $frequency = 'daily',
-        ?int $categoryId = null
-    ): void {
-        Habit::create($name, $description, $frequency, $categoryId);
-    }
-
-    public function update(
-        int $id,
-        string $name,
-        ?string $description,
-        string $frequency,
-        ?int $categoryId = null
-    ): void {
-        Habit::update($id, $name, $description, $frequency, $categoryId);
-    }
-
-    public function delete(int $id): void
+    public function save(Habit $habit): void
     {
-        Habit::delete($id);
+        $habit->save();
+    }
+
+    public function delete(Habit $habit): void
+    {
+        $habit->delete();
     }
 
     public function getAllWithStatusForDate(string $date): array
@@ -49,6 +35,12 @@ class HabitRepository
 
     public function toggleForDate(int $habitId, string $date): void
     {
-        Habit::toggleForDate($habitId, $date);
+        $habit = $this->findById($habitId);
+
+        if ($habit === null) {
+            return;
+        }
+
+        $habit->toggleForDate($date);
     }
 }

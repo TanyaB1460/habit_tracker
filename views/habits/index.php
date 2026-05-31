@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+/** @var \App\Models\Habit[] $habits */
+/** @var \App\Models\HabitCategory[] $categories */
+
 $frequencyLabels = [
         'daily' => 'ежедневно',
         'weekly' => 'еженедельно',
@@ -45,12 +48,7 @@ $frequencyLabels = [
 
                     <div class="form-group">
                         <label class="form-label" for="description">Описание</label>
-                        <textarea
-                                class="form-textarea"
-                                id="description"
-                                name="description"
-                                rows="4"
-                        ></textarea>
+                        <textarea class="form-textarea" id="description" name="description" rows="4"></textarea>
                     </div>
 
                     <div class="form-group">
@@ -66,8 +64,8 @@ $frequencyLabels = [
                         <select class="form-select" id="category_id" name="category_id">
                             <option value="">Без категории</option>
                             <?php foreach ($categories as $category): ?>
-                                <option value="<?= (int) $category['id'] ?>">
-                                    <?= htmlspecialchars((string) $category['name'], ENT_QUOTES, 'UTF-8') ?>
+                                <option value="<?= (int) $category->id ?>">
+                                    <?= htmlspecialchars($category->name, ENT_QUOTES, 'UTF-8') ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>
@@ -89,50 +87,42 @@ $frequencyLabels = [
                 </div>
             <?php else: ?>
                 <div class="habits-list">
-                    <?php foreach ($habits as $habit): ?>
-                        <?php
-                        $frequencyLabel = $frequencyLabels[$habit['frequency']] ?? (string) $habit['frequency'];
+                    <?php foreach ($habits as $habit):
+                        $frequencyLabel = $frequencyLabels[$habit->frequency] ?? $habit->frequency;
                         ?>
                         <article class="habit-card">
                             <div class="habit-card__top">
                                 <h3 class="habit-title">
-                                    <?= htmlspecialchars((string) $habit['name'], ENT_QUOTES, 'UTF-8') ?>
+                                    <?= htmlspecialchars($habit->name, ENT_QUOTES, 'UTF-8') ?>
                                 </h3>
                             </div>
 
-                            <?php if (!empty($habit['description'])): ?>
+                            <?php if (!empty($habit->description)): ?>
                                 <p class="habit-description">
-                                    <?= htmlspecialchars((string) $habit['description'], ENT_QUOTES, 'UTF-8') ?>
+                                    <?= htmlspecialchars($habit->description, ENT_QUOTES, 'UTF-8') ?>
                                 </p>
                             <?php endif; ?>
 
                             <p class="habit-meta">
-                                Частота:
-                                <?= htmlspecialchars($frequencyLabel, ENT_QUOTES, 'UTF-8') ?>
+                                Частота: <?= htmlspecialchars($frequencyLabel, ENT_QUOTES, 'UTF-8') ?>
                             </p>
 
-                            <?php if (!empty($habit['category_name'])): ?>
+                            <?php if (!empty($habit->categoryName)): ?>
                                 <p class="habit-meta">
                                     Категория:
-                                    <?= htmlspecialchars((string) $habit['category_name'], ENT_QUOTES, 'UTF-8') ?>
+                                    <?= htmlspecialchars($habit->categoryName, ENT_QUOTES, 'UTF-8') ?>
                                 </p>
                             <?php endif; ?>
 
                             <div class="actions">
-                                <a
-                                        class="button button-secondary"
-                                        href="/habits/edit?id=<?= (int) $habit['id'] ?>"
-                                >
+                                <a class="button button-secondary"
+                                   href="/habits/edit?id=<?= (int) $habit->id ?>">
                                     Редактировать
                                 </a>
 
-                                <form
-                                        method="POST"
-                                        action="/habits/delete"
-                                        class="inline-form"
-                                        data-confirm="Удалить привычку?"
-                                >
-                                    <input type="hidden" name="id" value="<?= (int) $habit['id'] ?>">
+                                <form method="POST" action="/habits/delete" class="inline-form"
+                                      data-confirm="Удалить привычку?">
+                                    <input type="hidden" name="id" value="<?= (int) $habit->id ?>">
                                     <button class="button button-danger" type="submit">Удалить</button>
                                 </form>
                             </div>

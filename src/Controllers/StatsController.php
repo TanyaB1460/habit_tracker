@@ -17,8 +17,8 @@ final class StatsController extends Controller
         $summary = Habit::getStatsSummary();
         $dailyStats = Habit::getDailyCompletionStats();
 
-        $firstStat = $dailyStats[0] ?? null;
-        $lastStat = !empty($dailyStats) ? $dailyStats[array_key_last($dailyStats)] : null;
+        $firstStat = array_first($dailyStats);
+        $lastStat = array_last($dailyStats);
 
         $periodStart = is_array($lastStat) ? ($lastStat['completed_on'] ?? null) : null;
         $periodEnd = is_array($firstStat) ? ($firstStat['completed_on'] ?? null) : null;

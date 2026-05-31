@@ -11,6 +11,7 @@ final class Database
 {
     private static ?PDO $instance = null;
 
+    //Получить (или создать) общее PDO-подключение
     public static function getConnection(): PDO
     {
         if (self::$instance !== null) {
@@ -21,7 +22,7 @@ final class Database
         $port = $_ENV['DB_PORT'] ?? '5432';
         $dbname = $_ENV['DB_NAME'] ?? 'habit_tracker';
         $user = $_ENV['DB_USER'] ?? 'postgres';
-        $password = $_ENV['DB_PASSWORD'] ?? '2685';
+        $password = $_ENV['DB_PASS'] ?? '';
 
         $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', $host, $port, $dbname);
 
@@ -41,16 +42,19 @@ final class Database
         return self::$instance;
     }
 
+    //Установить внешнее PDO-подключение
     public static function setConnection(PDO $pdo): void
     {
         self::$instance = $pdo;
     }
 
+    //Сбросить текущее подключение
     public static function reset(): void
     {
         self::$instance = null;
     }
 
+    //Запретить создание экземпляров класса
     private function __construct()
     {
     }

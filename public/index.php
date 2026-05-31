@@ -19,6 +19,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
+//Здесь начинается инициализация приложения: подключается автозагрузка классов.
 $dotenv = Dotenv::createImmutable(dirname(__DIR__));
 $dotenv->load();
 
@@ -36,6 +37,7 @@ if (!is_dir(dirname($logFile))) {
 $logger = new Logger('app');
 $logger->pushHandler(new StreamHandler($logFile, Level::Debug));
 
+//Здесь frontend-контроллер загружает конфигурацию окружения
 $psr17Factory = new Psr17Factory();
 $requestCreator = new ServerRequestCreator(
     $psr17Factory,
@@ -44,9 +46,9 @@ $requestCreator = new ServerRequestCreator(
     $psr17Factory
 );
 
-/** @var ServerRequestInterface $request */
 $request = $requestCreator->fromGlobals();
 
+//Здесь из суперглобальных массивов формируется объект HTTP‑запроса по PSR‑7. Это и есть инициализация данных запроса.
 $router = new Router();
 $router->register([
     HomeController::class,
@@ -82,12 +84,20 @@ try {
     ]);
 
     if ($appDebug) {
-        $content = '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8"><title>Application error</title></head><body>';
+        $content = '<!DOCTYPE html>'
+            . '<html lang="ru"><head>'
+            . '<meta charset="UTF-8"><title>Application error</title></head><body>';
         $content .= '<h1>Application error</h1>';
-        $content .= '<p><strong>Message:</strong> ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</p>';
-        $content .= '<p><strong>File:</strong> ' . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8') . '</p>';
+        $content .= '<p><strong>Message:</strong> '
+            . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8')
+            . '</p>';
+        $content .= '<p><strong>File:</strong> '
+            . htmlspecialchars($e->getFile(), ENT_QUOTES, 'UTF-8')
+            . '</p>';
         $content .= '<p><strong>Line:</strong> ' . $e->getLine() . '</p>';
-        $content .= '<pre>' . htmlspecialchars($e->getTraceAsString(), ENT_QUOTES, 'UTF-8') . '</pre>';
+        $content .= '<pre>'
+            . htmlspecialchars($e->getTraceAsString(), ENT_QUOTES, 'UTF-8')
+            . '</pre>';
         $content .= '</body></html>';
 
         $response = new \Nyholm\Psr7\Response(

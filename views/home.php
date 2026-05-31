@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+
+/** @var string $today */
+/** @var array<array{habit: \App\Models\Habit, completedToday: bool}> $habitsWithStatus */
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -18,7 +21,7 @@ declare(strict_types=1);
         <div class="page-heading">
             <h1 class="page-title">Трекер привычек</h1>
             <p class="page-date">
-                Сегодня: <?= htmlspecialchars((string) $today, ENT_QUOTES, 'UTF-8') ?>
+                Сегодня: <?= htmlspecialchars($today, ENT_QUOTES, 'UTF-8') ?>
             </p>
         </div>
 
@@ -30,22 +33,23 @@ declare(strict_types=1);
     </header>
 
     <main id="main" class="content">
-        <?php if (empty($habits)): ?>
+        <?php if (empty($habitsWithStatus)): ?>
             <section class="empty-state">
                 <p class="empty-text">Пока нет привычек.</p>
                 <a class="button button-primary" href="/habits">Добавить привычку</a>
             </section>
         <?php else: ?>
             <section class="habits-list">
-                <?php foreach ($habits as $habit): ?>
-                    <?php
-                    $frequencyLabel = match ($habit['frequency']) {
+                <?php foreach ($habitsWithStatus as $item):
+                    $habit = $item['habit'];
+                    $isCompleted = $item['completedToday'];
+
+                    $frequencyLabel = match ($habit->frequency) {
                         'daily' => 'ежедневно',
                         'weekly' => 'еженедельно',
-                        default => (string) $habit['frequency'],
+                        default => $habit->frequency,
                     };
 
-                    $isCompleted = (bool) ($habit['completed_today'] ?? false);
                     $statusClass = $isCompleted ? 'status-done' : 'status-pending';
                     $statusText = $isCompleted ? 'выполнено' : 'не выполнено';
                     $buttonText = $isCompleted ? 'Отменить отметку' : 'Отметить выполнение';
@@ -53,7 +57,7 @@ declare(strict_types=1);
                     <article class="habit-card">
                         <div class="habit-card__top">
                             <h2 class="habit-title">
-                                <?= htmlspecialchars((string) $habit['name'], ENT_QUOTES, 'UTF-8') ?>
+                                <?= htmlspecialchars($habit->name, ENT_QUOTES, 'UTF-8') ?>
                             </h2>
 
                             <span class="status-badge <?= $statusClass ?>">
@@ -61,29 +65,23 @@ declare(strict_types=1);
                             </span>
                         </div>
 
-                        <?php if (!empty($habit['description'])): ?>
+                        <?php if (!empty($habit->description)): ?>
                             <p class="habit-description">
-                                <?= htmlspecialchars((string) $habit['description'], ENT_QUOTES, 'UTF-8') ?>
+                                <?= htmlspecialchars($habit->description, ENT_QUOTES, 'UTF-8') ?>
                             </p>
                         <?php endif; ?>
 
                         <p class="habit-meta">
-                            Частота:
-                            <?= htmlspecialchars($frequencyLabel, ENT_QUOTES, 'UTF-8') ?>
+                            Частота: <?= htmlspecialchars($frequencyLabel, ENT_QUOTES, 'UTF-8') ?>
                         </p>
 
                         <form method="POST" action="/toggle" class="habit-form">
-                            <input type="hidden" name="habit_id" value="<?= (int) $habit['id'] ?>">
-                            <input
-                                    type="hidden"
-                                    name="date"
-                                    value="<?= htmlspecialchars((string) $today, ENT_QUOTES, 'UTF-8') ?>"
-                            >
+                            <input type="hidden" name="habit_id" value="<?= (int) $habit->id ?>">
+                            <input type="hidden" name="date"
+                                   value="<?= htmlspecialchars($today, ENT_QUOTES, 'UTF-8') ?>">
 
-                            <button
-                                    class="button <?= $isCompleted ? 'button-secondary' : 'button-primary' ?>"
-                                    type="submit"
-                            >
+                            <button class="button <?= $isCompleted ? 'button-secondary' : 'button-primary' ?>"
+                                    type="submit">
                                 <?= $buttonText ?>
                             </button>
                         </form>

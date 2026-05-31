@@ -29,4 +29,18 @@ final class ValidationExceptionTest extends TestCase
         $this->assertSame([], $exception->getErrors());
         $this->assertSame('Ошибка', $exception->getMessage());
     }
+
+    public function testExceptionIsInstanceOfRuntimeException(): void
+    {
+        $exception = new ValidationException(['field' => 'error']);
+
+        $this->assertInstanceOf(\Exception::class, $exception);
+    }
+
+    public function testExceptionUsesDefaultMessage(): void
+    {
+        $exception = new ValidationException(['name' => 'required']);
+
+        $this->assertSame('Ошибка валидации', $exception->getMessage());
+    }
 }

@@ -10,68 +10,61 @@ use Throwable;
 
 final class HabitLog
 {
-    public static function findByHabitAndDate(int $habitId, string $date): ?array
+    public function __construct(
+        public readonly ?int $id,
+        public readonly int $habitId,
+        public readonly string $completedOn,
+        public readonly ?string $createdAt = null,
+    ) {
+    }
+
+    public function save(): void
+    {
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare(
+            'INSERT INTO habit_logs (habit_id, completed_on) VALUES (:habit_id, :completed_on)'
+        );
+        $stmt->execute([
+            'habit_id' => $this->habitId,
+            'completed_on' => $this->completedOn,
+        ]);
+    }
+
+    public function delete(): void
+    {
+        if ($this->id === null) {
+            return;
+        }
+
+        $pdo = Database::getConnection();
+        $stmt = $pdo->prepare('DELETE FROM habit_logs WHERE id = :id');
+        $stmt->execute(['id' => $this->id]);
+    }
+
+    public static function fromRow(array $row): self
+    {
+        return new self(
+            id: (int) $row['id'],
+            habitId: (int) $row['habit_id'],
+            completedOn: $row['completed_on'],
+            createdAt: $row['created_at'] ?? null,
+        );
+    }
+
+    public static function findByHabitAndDate(int $habitId, string $date): ?self
     {
         try {
             $pdo = Database::getConnection();
-
             $stmt = $pdo->prepare(
                 'SELECT id, habit_id, completed_on, created_at
                  FROM habit_logs
-                 WHERE habit_id = :habit_id
-                   AND completed_on = :completed_on
+                 WHERE habit_id = :habit_id AND completed_on = :completed_on
                  LIMIT 1'
             );
+            $stmt->execute(['habit_id' => $habitId, 'completed_on' => $date]);
+            $row = $stmt->fetch();
 
-            $stmt->execute([
-                'habit_id' => $habitId,
-                'completed_on' => $date,
-            ]);
-
-            $log = $stmt->fetch();
-
-            return $log ?: null;
-        } catch (Throwable $e) {
-            error_log($e->getMessage());
-            throw $e;
-        }
-    }
-
-    public static function create(int $habitId, string $date): void
-    {
-        try {
-            $pdo = Database::getConnection();
-
-            $stmt = $pdo->prepare(
-                'INSERT INTO habit_logs (habit_id, completed_on)
-                 VALUES (:habit_id, :completed_on)'
-            );
-
-            $stmt->execute([
-                'habit_id' => $habitId,
-                'completed_on' => $date,
-            ]);
-        } catch (Throwable $e) {
-            error_log($e->getMessage());
-            throw $e;
-        }
-    }
-
-    public static function deleteByHabitAndDate(int $habitId, string $date): void
-    {
-        try {
-            $pdo = Database::getConnection();
-
-            $stmt = $pdo->prepare(
-                'DELETE FROM habit_logs
-                 WHERE habit_id = :habit_id
-                   AND completed_on = :completed_on'
-            );
-
-            $stmt->execute([
-                'habit_id' => $habitId,
-                'completed_on' => $date,
-            ]);
+            return $row ? self::fromRow($row) : null;
         } catch (Throwable $e) {
             error_log($e->getMessage());
             throw $e;
@@ -82,7 +75,6 @@ final class HabitLog
     {
         try {
             $pdo = Database::getConnection();
-
             $stmt = $pdo->query('SELECT COUNT(*) FROM habit_logs');
 
             return (int) $stmt->fetchColumn();
@@ -96,16 +88,10 @@ final class HabitLog
     {
         try {
             $pdo = Database::getConnection();
-
             $stmt = $pdo->prepare(
-                'SELECT COUNT(*)
-                 FROM habit_logs
-                 WHERE completed_on = :completed_on'
+                'SELECT COUNT(*) FROM habit_logs WHERE completed_on = :completed_on'
             );
-
-            $stmt->execute([
-                'completed_on' => $date,
-            ]);
+            $stmt->execute(['completed_on' => $date]);
 
             return (int) $stmt->fetchColumn();
         } catch (Throwable $e) {
@@ -118,15 +104,13 @@ final class HabitLog
     {
         try {
             $pdo = Database::getConnection();
-
             $stmt = $pdo->prepare(
-                'SELECT completed_on, COUNT(*) AS total
+                "SELECT completed_on, COUNT(*) AS total
                  FROM habit_logs
-                 WHERE completed_on >= CURRENT_DATE - (:days * INTERVAL \'1 day\')
+                 WHERE completed_on >= CURRENT_DATE - (:days * INTERVAL '1 day')
                  GROUP BY completed_on
-                 ORDER BY completed_on DESC'
+                 ORDER BY completed_on DESC"
             );
-
             $stmt->bindValue(':days', $days, PDO::PARAM_INT);
             $stmt->execute();
 

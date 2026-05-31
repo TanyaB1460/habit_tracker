@@ -24,20 +24,21 @@ final class HomeController extends Controller
     public function index(): ResponseInterface
     {
         $today = date('Y-m-d');
-        $habits = $this->habitRepository->getAllWithStatusForDate($today);
+        $habitsWithStatus = $this->habitRepository->getAllWithStatusForDate($today);
 
         return $this->render('home', [
             'today' => $today,
-            'habits' => $habits,
+            'habitsWithStatus' => $habitsWithStatus,
         ]);
     }
 
     public function toggleAction(int $habitId, string $date): ResponseInterface
     {
         if ($habitId <= 0) {
-            throw new ValidationException([
-                'habit_id' => 'Некорректный идентификатор привычки.',
-            ], 'Ошибка валидации');
+            throw new ValidationException(
+                ['habit_id' => 'Некорректный идентификатор привычки.'],
+                'Ошибка валидации'
+            );
         }
 
         $this->habitRepository->toggleForDate($habitId, $date);

@@ -1,6 +1,9 @@
 <?php
 
 declare(strict_types=1);
+
+/** @var \App\Models\Habit $habit */
+/** @var \App\Models\HabitCategory[] $categories */
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -33,37 +36,28 @@ declare(strict_types=1);
                 <h2 class="card-title">Форма редактирования</h2>
 
                 <form method="POST" action="/habits/update" class="form">
-                    <input type="hidden" name="id" value="<?= (int) $habit['id'] ?>">
+                    <input type="hidden" name="id" value="<?= (int) $habit->id ?>">
 
                     <div class="form-group">
                         <label class="form-label" for="name">Название</label>
-                        <input
-                                class="form-input"
-                                type="text"
-                                id="name"
-                                name="name"
-                                value="<?= htmlspecialchars((string) $habit['name'], ENT_QUOTES, 'UTF-8') ?>"
-                                required
-                        >
+                        <input class="form-input" type="text" id="name" name="name"
+                               value="<?= htmlspecialchars($habit->name, ENT_QUOTES, 'UTF-8') ?>"
+                               required>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label" for="description">Описание</label>
-                        <textarea
-                                class="form-textarea"
-                                id="description"
-                                name="description"
-                                rows="4"
-                        ><?= htmlspecialchars((string) ($habit['description'] ?? ''), ENT_QUOTES, 'UTF-8') ?></textarea>
+                        <textarea class="form-textarea" id="description" name="description"
+                                  rows="4"><?= htmlspecialchars($habit->description ?? '', ENT_QUOTES, 'UTF-8') ?></textarea>
                     </div>
 
                     <div class="form-group">
                         <label class="form-label" for="frequency">Частота</label>
                         <select class="form-select" id="frequency" name="frequency">
-                            <option value="daily" <?= ($habit['frequency'] ?? '') === 'daily' ? 'selected' : '' ?>>
+                            <option value="daily" <?= $habit->frequency === 'daily' ? 'selected' : '' ?>>
                                 ежедневно
                             </option>
-                            <option value="weekly" <?= ($habit['frequency'] ?? '') === 'weekly' ? 'selected' : '' ?>>
+                            <option value="weekly" <?= $habit->frequency === 'weekly' ? 'selected' : '' ?>>
                                 еженедельно
                             </option>
                         </select>
@@ -74,11 +68,9 @@ declare(strict_types=1);
                         <select class="form-select" id="category_id" name="category_id">
                             <option value="">Без категории</option>
                             <?php foreach ($categories as $category): ?>
-                                <option
-                                        value="<?= (int) $category['id'] ?>"
-                                        <?= ((int) ($habit['category_id'] ?? 0) === (int) $category['id']) ? 'selected' : '' ?>
-                                >
-                                    <?= htmlspecialchars((string) $category['name'], ENT_QUOTES, 'UTF-8') ?>
+                                <option value="<?= (int) $category->id ?>"
+                                        <?= $habit->categoryId === $category->id ? 'selected' : '' ?>>
+                                    <?= htmlspecialchars($category->name, ENT_QUOTES, 'UTF-8') ?>
                                 </option>
                             <?php endforeach; ?>
                         </select>

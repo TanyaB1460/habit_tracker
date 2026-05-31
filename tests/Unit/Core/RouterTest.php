@@ -16,13 +16,18 @@ final class RouterTest extends TestCase
 {
     public function testDispatchReturnsControllerResponseForRegisteredRoute(): void
     {
-        $router = new Router();
-        $router->register([
-            TestHomeController::class,
-        ]);
+        $controller = new class {
+            #[Route(path: '/', methods: ['GET'])]
+            public function index(): ResponseInterface
+            {
+                return new Response(200, ['Content-Type' => 'text/plain'], 'home page');
+            }
+        };
 
-        $request = new ServerRequest('GET', '/');
-        $response = $router->dispatch($request);
+        $router = new Router();
+        $router->register([get_class($controller)]);
+
+        $response = $router->dispatch(new ServerRequest('GET', '/'));
 
         $this->assertInstanceOf(ResponseInterface::class, $response);
         $this->assertSame(200, $response->getStatusCode());
@@ -31,13 +36,20 @@ final class RouterTest extends TestCase
 
     public function testDispatchPassesRequestIntoControllerAction(): void
     {
-        $router = new Router();
-        $router->register([
-            TestRequestAwareController::class,
-        ]);
+        $controller = new class {
+            #[Route(path: '/check-request', methods: ['GET'])]
+            public function show(ServerRequestInterface $request): ResponseInterface
+            {
+                $body = $request->getMethod() . ' ' . $request->getUri()->getPath();
 
-        $request = new ServerRequest('GET', '/check-request');
-        $response = $router->dispatch($request);
+                return new Response(200, ['Content-Type' => 'text/plain'], $body);
+            }
+        };
+
+        $router = new Router();
+        $router->register([get_class($controller)]);
+
+        $response = $router->dispatch(new ServerRequest('GET', '/check-request'));
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame('GET /check-request', (string) $response->getBody());
@@ -45,13 +57,18 @@ final class RouterTest extends TestCase
 
     public function testDispatchReturns404ForUnknownRoute(): void
     {
-        $router = new Router();
-        $router->register([
-            TestHomeController::class,
-        ]);
+        $controller = new class {
+            #[Route(path: '/', methods: ['GET'])]
+            public function index(): ResponseInterface
+            {
+                return new Response(200, ['Content-Type' => 'text/plain'], 'home page');
+            }
+        };
 
-        $request = new ServerRequest('GET', '/missing-page');
-        $response = $router->dispatch($request);
+        $router = new Router();
+        $router->register([get_class($controller)]);
+
+        $response = $router->dispatch(new ServerRequest('GET', '/missing-page'));
 
         $this->assertSame(404, $response->getStatusCode());
         $this->assertStringContainsString('404', (string) $response->getBody());
@@ -59,44 +76,38 @@ final class RouterTest extends TestCase
 
     public function testDispatchNormalizesTrailingSlash(): void
     {
-        $router = new Router();
-        $router->register([
-            TestHabitsController::class,
-        ]);
+        $controller = new class {
+            #[Route(path: '/habits', methods: ['GET'])]
+            public function index(): ResponseInterface
+            {
+                return new Response(200, ['Content-Type' => 'text/plain'], 'habits page');
+            }
+        };
 
-        $request = new ServerRequest('GET', '/habits/');
-        $response = $router->dispatch($request);
+        $router = new Router();
+        $router->register([get_class($controller)]);
+
+        $response = $router->dispatch(new ServerRequest('GET', '/habits/'));
 
         $this->assertSame(200, $response->getStatusCode());
         $this->assertSame('habits page', (string) $response->getBody());
     }
-}
 
-final class TestHomeController
-{
-    #[Route(path: '/', methods: ['GET'])]
-    public function index(): ResponseInterface
+    public function testDispatchReturns404WhenMethodDoesNotMatch(): void
     {
-        return new Response(200, ['Content-Type' => 'text/plain; charset=UTF-8'], 'home page');
-    }
-}
+        $controller = new class {
+            #[Route(path: '/', methods: ['GET'])]
+            public function index(): ResponseInterface
+            {
+                return new Response(200, ['Content-Type' => 'text/plain'], 'home page');
+            }
+        };
 
-final class TestHabitsController
-{
-    #[Route(path: '/habits', methods: ['GET'])]
-    public function index(): ResponseInterface
-    {
-        return new Response(200, ['Content-Type' => 'text/plain; charset=UTF-8'], 'habits page');
-    }
-}
+        $router = new Router();
+        $router->register([get_class($controller)]);
 
-final class TestRequestAwareController
-{
-    #[Route(path: '/check-request', methods: ['GET'])]
-    public function show(ServerRequestInterface $request): ResponseInterface
-    {
-        $body = $request->getMethod() . ' ' . $request->getUri()->getPath();
+        $response = $router->dispatch(new ServerRequest('POST', '/'));
 
-        return new Response(200, ['Content-Type' => 'text/plain; charset=UTF-8'], $body);
+        $this->assertSame(404, $response->getStatusCode());
     }
 }
